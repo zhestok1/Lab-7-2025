@@ -59,6 +59,6 @@ public class FunctionPoint {
 
     @Override
     public Object clone() {
-        return new FunctionPoint(this.x, this.y); // Просто клонируем объект
+        return new FunctionPoint(this.x, this.y); // Просто создаём объект
     }
 }

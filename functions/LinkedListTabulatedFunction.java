@@ -496,11 +496,12 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
 
     @Override
     public int hashCode() {
-        int hash = 17;
+        // Может быть любым положительным числом кроме нуля, лучше всего взять небольшое простое число 11,13,17,...
+        int hash = 17; // Простое число, которое помогает избегать коллизии
         FunctionNode curr = head.getNext();
         while (curr != head) {
-            hash = 31 * hash + curr.getPoint().hashCode();
-            curr = curr.getNext();
+            hash = 31 * hash + curr.getPoint().hashCode(); // Умножаем для распределения хэш-значений
+            curr = curr.getNext(); // Распределение значений важно, так как при маленьких значениях можем получить одинаковый хэш
         }
         return hash;
     }
