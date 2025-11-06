@@ -1,7 +1,6 @@
 package threads;
-
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import functions.Functions;
 
 public class Integrator extends Thread {
     private Task task;
@@ -14,53 +13,29 @@ public class Integrator extends Thread {
 
     @Override
     public void run() {
-        System.out.println(getName() + " запущен");
-        int processed = 0;
+        try {
+            for (int i = 0; i < task.getTaskCount() && !isInterrupted(); i++) {
+                //запрашиваем разрешение на чтение
+                semaphore.acquire();
 
-        while (processed < task.getTaskCount() && !isInterrupted()) {
-            try {
-                // Используем tryAcquire с таймаутом
-                if (semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
-                    try {
-                        // Проверяем прерывание после захвата семафора
-                        if (isInterrupted()) {
-                            break;
-                        }
+                //получаем параметры задания
+                double left = task.getLeftX();
+                double right = task.getRightX();
+                double step = task.getStep();
 
-                        if (task.getFunction() != null) {
-                            double integralValue = functions.Functions.integral(
-                                    task.getFunction(),
-                                    task.getLeftX(),
-                                    task.getRightX(),
-                                    task.getStep()
-                            );
+                //вычисляем интеграл и выводим результат
+                double result = Functions.integral(task.getFunction(), left, right, step);
+                System.out.println(Thread.currentThread().getName() + " Result " +
+                        "<" + task.getLeftX() + "> " +
+                        "<" + task.getRightX() + "> " +
+                        "<" + task.getStep() + "> " +
+                        "<" + result + ">");
 
-                            System.out.println(getName() + " Result " +
-                                    "<" + task.getLeftX() + "> " +
-                                    "<" + task.getRightX() + "> " +
-                                    "<" + task.getStep() + "> " +
-                                    "<" + integralValue + ">");
-
-                            processed++;
-                            task.setFunction(null);
-                        }
-                    } finally {
-                        semaphore.release();
-                    }
-                } else {
-                    // Проверяем прерывание
-                    if (isInterrupted()) {
-                        break;
-                    }
-                }
-            } catch (InterruptedException e) {
-                System.out.println(getName() + " был прерван");
-                break;
-            } catch (Exception e) {
-                System.out.println(getName() + " Error: " + e.getMessage());
-                processed++; // Увеличиваем счетчик даже при ошибке
+                //освобождаем семафор для записи
+                semaphore.release();
             }
         }
-        System.out.println(getName() + " завершен");
+        catch (InterruptedException e) {System.out.println("Integrator interrupted");}
+        catch (Exception e) {System.out.println("Integration error: " + e.getMessage());}
     }
 }

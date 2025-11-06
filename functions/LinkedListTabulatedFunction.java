@@ -4,6 +4,8 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 
 public class LinkedListTabulatedFunction implements TabulatedFunction {
@@ -248,13 +250,13 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
      * @throws InappropriateFunctionPointException исключение некорректно заданных значений точек в массиве
      */
     public LinkedListTabulatedFunction(FunctionPoint[] points)
-            throws IllegalArgumentException, InappropriateFunctionPointException {
+            throws IllegalArgumentException {
         if (points == null) throw new IllegalArgumentException("Points array cannot be null");
         if (points.length < 2) throw new IllegalArgumentException("Massive must be greater than 2!");
 
         for (int i = 1; i < points.length; i++) {
             if (points[i].getX() <= points[i-1].getX()) {
-                throw new InappropriateFunctionPointException();
+                throw new IllegalArgumentException("IllegalArgumentException");
             }
         }
 
@@ -519,8 +521,52 @@ public class LinkedListTabulatedFunction implements TabulatedFunction {
 
         try {
             return new LinkedListTabulatedFunction(massOfPoints);
-        } catch (InappropriateFunctionPointException e) {
-            throw new RuntimeException("Clone failed", e);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Clone failed", e);
+        }
+    }
+
+    @Override
+    public Iterator<FunctionPoint> iterator() {
+        return new Iterator<FunctionPoint>() {
+            private FunctionNode curr = head.getNext();
+            @Override
+            public boolean hasNext() {
+                return curr != head;
+            }
+
+            @Override
+            public FunctionPoint next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException("Elements is canceled!");
+                }
+                FunctionPoint p = new FunctionPoint(curr.getPoint());
+                curr = curr.getNext();
+                return p;
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("You cannot do remove operation!");
+            }
+        };
+    }
+
+    public static class LinkedListTabulatedFunctionFactory implements TabulatedFunctionFactory{
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(double leftX, double rightX, int pointsCount) throws IllegalArgumentException {
+            return new LinkedListTabulatedFunction(leftX, rightX, pointsCount);
+        }
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(double leftX, double rightX, double[] values) throws IllegalArgumentException {
+            return new LinkedListTabulatedFunction(leftX, rightX, values);
+        }
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(FunctionPoint[] points) throws IllegalArgumentException {
+            return new LinkedListTabulatedFunction(points);
         }
     }
 }

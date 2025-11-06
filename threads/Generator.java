@@ -1,7 +1,5 @@
 package threads;
-
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 public class Generator extends Thread {
     private Task task;
@@ -14,50 +12,33 @@ public class Generator extends Thread {
 
     @Override
     public void run() {
-        System.out.println(getName() + " запущен");
+        try {
+            for (int i = 0; i < task.getTaskCount() && !isInterrupted(); i++) {
+                //запрашиваем разрешение на запись
+                semaphore.acquire();
 
-        for (int i = 0; i < task.getTaskCount() && !isInterrupted(); i++) {
-            try {
-                // Используем tryAcquire с таймаутом
-                if (semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
-                    try {
-                        // Проверяем прерывание после захвата семафора
-                        if (isInterrupted()) {
-                            break;
-                        }
+                //генерируем случайные параметры
+                double base = 1 + Math.random() * 9; // от 1 до 10
+                double left = Math.random() * 100;   // от 0 до 100
+                double right = 100 + Math.random() * 100; // от 100 до 200
+                double step = Math.random();         // от 0 до 1
 
-                        double logBase = 1 + Math.random() * 9;
-                        functions.Function log = new functions.basic.Log(logBase);
-                        double leftX = Math.random() * 100;
-                        double rightX = 100 + Math.random() * 100;
-                        double step = Math.random();
+                //устанавливаем параметры в задание
+                task.setFunction(new functions.basic.Log(base));
+                task.setLeftX(left);
+                task.setRightX(right);
+                task.setStep(step);
 
-                        task.setFunction(log);
-                        task.setLeftX(leftX);
-                        task.setRightX(rightX);
-                        task.setStep(step);
+                System.out.println(Thread.currentThread().getName() + " Source " +
+                        "<" + task.getLeftX() + "> " +
+                        "<" + task.getRightX() + "> " +
+                        "<" + task.getStep() + "> ");
 
-                        System.out.println(getName() + " Source " +
-                                "<" + task.getLeftX() + "> " +
-                                "<" + task.getRightX() + "> " +
-                                "<" + task.getStep() + "> ");
-
-                    } finally {
-                        semaphore.release();
-                    }
-                } else {
-                    // Таймаут - проверяем прерывание
-                    if (isInterrupted()) {
-                        break;
-                    }
-                }
-            } catch (InterruptedException e) {
-                System.out.println(getName() + " был прерван");
-                break;
-            } catch (Exception e) {
-                System.out.println(getName() + " Error: " + e.getMessage());
+                //освобождаем семафор для чтения
+                semaphore.release();
             }
+        } catch (InterruptedException e) {
+            System.out.println("Generator interrupted");
         }
-        System.out.println(getName() + " завершен");
     }
 }

@@ -32,7 +32,7 @@ public class SimpleGenerator implements Runnable {
                     "<" + task.getRightX() + "> " +
                     "<" + task.getStep() + "> ");
 
-            // ⭐️ ВАЖНО: Добавить задержку! ⭐️
+
             try {
                 Thread.sleep(10); // Даем время Integrator'у
             } catch (InterruptedException e) {

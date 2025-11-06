@@ -5,7 +5,10 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class ArrayTabulatedFunction implements TabulatedFunction {
     private FunctionPoint[] massiveOfPoints;
@@ -64,14 +67,14 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
      * Создает табличную функцию с равномерно распределенными точками и заданными значениями функции
      * @param massiveOfPoints массив точек
      */
-    public ArrayTabulatedFunction(FunctionPoint[] massiveOfPoints) throws IllegalArgumentException, InappropriateFunctionPointException {
+    public ArrayTabulatedFunction(FunctionPoint[] massiveOfPoints) throws IllegalArgumentException {
         this.amountOfElements = massiveOfPoints.length;
         if (amountOfElements < 2)
             throw new IllegalArgumentException("Massive length must be greater than 2!");
 
         for (int i = 1; i < amountOfElements; i++) {
             if (massiveOfPoints[i].getX() < massiveOfPoints[i-1].getX()) {
-                throw new InappropriateFunctionPointException();
+                throw new IllegalArgumentException("IllegalArgumentException");
             }
         }
 
@@ -363,8 +366,52 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
         }
         try {
             return new ArrayTabulatedFunction(clonedPoints);
-        } catch (InappropriateFunctionPointException e) {
-            throw new RuntimeException("Clone failed", e);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public Iterator<FunctionPoint> iterator() {
+        return new Iterator<FunctionPoint>() {
+            private int index;
+            @Override
+            public boolean hasNext() {
+                return index < amountOfElements;
+            }
+
+            @Override
+            public FunctionPoint next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException("NoSuchElement!");
+                }
+                return new FunctionPoint(massiveOfPoints[index++]);
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("You cannot do remove operation!");
+            }
+        };
+    }
+
+    public static class ArrayTabulatedFunctionFactory implements TabulatedFunctionFactory {
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(double leftX, double rightX, int pointsCount) throws IllegalArgumentException {
+            return new ArrayTabulatedFunction(leftX, rightX, pointsCount);
+        }
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(double leftX, double rightX, double[] values) throws IllegalArgumentException {
+            return new ArrayTabulatedFunction(leftX, rightX, values);
+        }
+
+        @Override
+        public TabulatedFunction createTabulatedFunction(FunctionPoint[] points) throws IllegalArgumentException {
+            return new ArrayTabulatedFunction(points);
+        }
+    }
+
+
 }

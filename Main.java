@@ -1,6 +1,8 @@
 import functions.*;
+import functions.basic.Cos;
 import functions.basic.Exp;
 import functions.basic.Log;
+import functions.basic.Sin;
 import threads.*;
 
 
@@ -10,33 +12,82 @@ import java.util.concurrent.Semaphore;
 import static functions.Functions.integral;
 
 public class Main {
-    public static void main(String[] args) throws InappropriateFunctionPointException, IOException {
+    public static void main(String[] args) throws Exception {
 
-        Function exp = new Exp();
-        double theoryIntegral = Math.E - 1; // Значение интеграла от exp на [0,1]
+//        Function exp = new Exp();
+//        double theoryIntegral = Math.E - 1; // Значение интеграла от exp на [0,1]
+//
+//        double[] steps = {0.1, 0.01, 0.001, 0.0001 };
+//
+//        System.out.println("Шаг\t\tИнтеграл\t\tПогрешность");
+//        System.out.println("----------------------------------------");
+//
+//        for (double step : steps) {
+//            double myIntegral = integral(exp, 0, 1, step);
+//            double error = Math.abs(myIntegral - theoryIntegral);
+//
+//            System.out.printf("%.6f\t%.8f\t%.2e", step, myIntegral, error);
+//
+//            if (error < 1e-7) {
+//                System.out.println("  <- Нужный шаг");
+//                break;
+//            } else {
+//                System.out.println();
+//            }
+//        }
 
-        double[] steps = {0.1, 0.01, 0.001, 0.0001 };
+//         nonThread();
+//         complicatedThreads();
+//         simpleThread();
 
-        System.out.println("Шаг\t\tИнтеграл\t\tПогрешность");
-        System.out.println("----------------------------------------");
-
-        for (double step : steps) {
-            double myIntegral = integral(exp, 0, 1, step);
-            double error = Math.abs(myIntegral - theoryIntegral);
-
-            System.out.printf("%.6f\t%.8f\t%.2e", step, myIntegral, error);
-
-            if (error < 1e-7) {
-                System.out.println("  <- Точность достигнута");
-                break;
-            } else {
-                System.out.println();
-            }
+        System.out.println("---------------The First Task---------------");
+        TabulatedFunction f2 = new ArrayTabulatedFunction( 0, 10, 9);
+        for (FunctionPoint p : f2) {
+            System.out.println(p);
         }
 
-        nonThread();
-        simpleThread();
-        complicatedThreads();
+        System.out.println("---------------The Second Task---------------");
+        Function f1 = new Cos();
+        TabulatedFunction tf;
+        tf = TabulatedFunctions.tabulate(f1, 0, Math.PI, 11);
+        System.out.println(tf.getClass());
+        TabulatedFunctions.setTabulatedFunctionFactory(new
+                LinkedListTabulatedFunction.LinkedListTabulatedFunctionFactory());
+        tf = TabulatedFunctions.tabulate(f1, 0, Math.PI, 11);
+        System.out.println(tf.getClass());
+        TabulatedFunctions.setTabulatedFunctionFactory(new
+                ArrayTabulatedFunction.ArrayTabulatedFunctionFactory());
+        tf = TabulatedFunctions.tabulate(f1, 0, Math.PI, 11);
+        System.out.println(tf.getClass());
+
+        System.out.println("---------------The Third Task---------------");
+        TabulatedFunction f;
+
+        f = TabulatedFunctions.createTabulatedFunction(
+                ArrayTabulatedFunction.class, 0, 10, 3);
+        System.out.println(f.getClass());
+        System.out.println(f);
+
+        f = TabulatedFunctions.createTabulatedFunction(
+                ArrayTabulatedFunction.class, 0, 10, new double[] {0, 10});
+        System.out.println(f.getClass());
+        System.out.println(f);
+
+        f = TabulatedFunctions.createTabulatedFunction(
+                LinkedListTabulatedFunction.class,
+                new FunctionPoint[] {
+                        new FunctionPoint(0, 0),
+                        new FunctionPoint(10, 10)
+                }
+        );
+        System.out.println(f.getClass());
+        System.out.println(f);
+
+        f = TabulatedFunctions.tabulate(
+                LinkedListTabulatedFunction.class, new Sin(), 0, Math.PI, 11);
+        System.out.println(f.getClass());
+        System.out.println(f);
+
 
     }
 
@@ -88,53 +139,35 @@ public class Main {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
-        System.out.println("========== SimpleThreads Завершен ==========");
     }
 
     public static void complicatedThreads() {
-        System.out.println("========== ComplicatedThreads Выполняется ==========");
+        System.out.println("----------complicatedThreads----------");
 
+        //создаём общие объекты (задания и семафора) и устанавливаем количество заданий
         Task task = new Task(100);
-        Semaphore semaphore = new Semaphore(1);
+        Semaphore semaphore = new Semaphore(1, true);
 
+        //создаем потоки
         Generator generator = new Generator(task, semaphore);
         Integrator integrator = new Integrator(task, semaphore);
 
-        // Установка приоритетов (экспериментируем)
-        generator.setPriority(Thread.MAX_PRIORITY);     // Высший приоритет
-        integrator.setPriority(Thread.NORM_PRIORITY);   // Обычный приоритет
-
-        System.out.println("Приоритет Generator: " + generator.getPriority());
-        System.out.println("Приоритет Integrator: " + integrator.getPriority());
-
+        //запускаем потоки
         generator.start();
         integrator.start();
 
-        // Ждем 50ms и прерываем потоки
         try {
             Thread.sleep(50);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
-        System.out.println("Прерываем потоки после 50ms...");
-        generator.interrupt();
-        integrator.interrupt();
+            //прерываем потоки
+            generator.interrupt();
+            integrator.interrupt();
 
-        // Ждем завершения потоков после прерывания
-        try {
-            generator.join(100);
-            integrator.join(100);
-        } catch (InterruptedException e) {
-            System.out.println("Основной поток был прерван");
-        }
-
-        // Проверяем, завершились ли потоки
-        System.out.println("Generator состояние: " + (generator.isAlive() ? "ЖИВ" : "ЗАВЕРШЕН"));
-        System.out.println("Integrator состояние: " + (integrator.isAlive() ? "ЖИВ" : "ЗАВЕРШЕН"));
-
-        System.out.println("========== ComplicatedThreads Завершен ==========");
+            //ждем завершения потоков
+            generator.join();
+            integrator.join();
+        } catch (InterruptedException e) {System.out.println("Главный поток был прерван!");}
+        System.out.println();
     }
 
 }

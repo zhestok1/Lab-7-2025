@@ -1,8 +1,193 @@
 package functions;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 
 public class TabulatedFunctions {
+
+    private static TabulatedFunctionFactory tff = new ArrayTabulatedFunction.ArrayTabulatedFunctionFactory();
+
+    public static void setTabulatedFunctionFactory(TabulatedFunctionFactory factory) {
+        TabulatedFunctions.tff = factory;
+    }
+
+    public static TabulatedFunction createTabulatedFunction(double leftX, double rightX, int pointsCount) throws IllegalArgumentException {
+        return tff.createTabulatedFunction(leftX, rightX, pointsCount);
+    }
+    public static TabulatedFunction createTabulatedFunction(double leftX, double rightX, double[] values) throws IllegalArgumentException {
+        return tff.createTabulatedFunction(leftX, rightX, values);
+    }
+    public static TabulatedFunction createTabulatedFunction(FunctionPoint[] massiveOfpoints) throws IllegalArgumentException {
+        return tff.createTabulatedFunction(massiveOfpoints);
+    }
+
+    // Рефлексия
+
+    /**
+     * Создает табулированную функцию через рефлексию по границам и количеству точек
+     * @param fClass класс, реализующий TabulatedFunction
+     * @param leftX левая граница
+     * @param rightX правая граница
+     * @param pointsCount количество точек
+     * @return созданная табулированная функция
+     */
+    public static TabulatedFunction createTabulatedFunction(Class<?> fClass, double leftX, double rightX, int pointsCount) {
+        try {
+            // isAssignableFrom() проверяет, можно ли привести functionClass к TabulatedFunction
+            if (!TabulatedFunction.class.isAssignableFrom(fClass)) {
+                throw new IllegalArgumentException("Class must be realize TabulatedFunction interface!");
+            }
+
+            // Ищем конструктор с параметрами (double, double, int)
+            java.lang.reflect.Constructor<?> constructor = fClass.getConstructor(double.class, double.class, int.class);
+            // Вызывает найденный конструктор с переданными аргументами
+            return (TabulatedFunction) constructor.newInstance(leftX, rightX, pointsCount);
+
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("Constructor (double, double, int) not found in class: " + fClass.getName(), e);
+        } catch (InstantiationException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            throw new IllegalArgumentException("Cannot create instance of class: " + fClass.getName(), e);
+        }
+    }
+
+    /**
+     * Создает табулированную функцию через рефлексию по массивам X и Y значений
+     * @param fClass класс, реализующий TabulatedFunction
+     * @param leftX массив X значений
+     * @param rightX массив Y значений
+     * @return созданная табулированная функция
+     */
+    public static TabulatedFunction createTabulatedFunction(Class<?> fClass, double leftX, double rightX, double[] values) {
+        try {
+            if (!TabulatedFunction.class.isAssignableFrom(fClass)) {
+                throw new IllegalArgumentException("Class must be realize TabulatedFunction interface!");
+            }
+
+            // Ищем конструктор с параметрами (double, double, values)
+            java.lang.reflect.Constructor<?> constructor = fClass.getConstructor(double.class, double.class, double[].class);
+            // Вызывает найденный конструктор с переданными аргументами
+            return (TabulatedFunction) constructor.newInstance(leftX, rightX, values);
+
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("Constructor (double, double, double[]) not found in class: " + fClass.getName(), e);
+        } catch (InstantiationException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            throw new IllegalArgumentException("Cannot create instance of class: " + fClass.getName(), e);
+        }
+    }
+
+    /**
+     * Создает табулированную функцию через рефлексию по массиву точек
+     * @param fClass класс, реализующий TabulatedFunction
+     * @param points массив точек функции
+     * @return созданная табулированная функция
+     */
+    public static TabulatedFunction createTabulatedFunction(Class<?> fClass, FunctionPoint[] points) {
+        try {
+            if (!TabulatedFunction.class.isAssignableFrom(fClass)) {
+                throw new IllegalArgumentException("Class must be realize TabulatedFunction interface!");
+            }
+
+            // Ищем конструктор с параметрами (points)
+            java.lang.reflect.Constructor<?> constructor = fClass.getConstructor(FunctionPoint[].class);
+            // Вызывает найденный конструктор с переданными аргументами
+            return (TabulatedFunction) constructor.newInstance((Object) points);
+
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("Constructor (FunctionPoint[]) not found in class: " + fClass.getName(), e);
+        } catch (InstantiationException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            throw new IllegalArgumentException("Cannot create instance of class: " + fClass.getName(), e);
+        }
+    }
+
+    public static TabulatedFunction tabulate(Class<?> fClass, Function function, double leftX, double rightX, int pointsCount) {
+        // Проверка входных параметров
+        if (function == null) {
+            throw new IllegalArgumentException("Function cannot be null");
+        }
+        if (leftX >= rightX) {
+            throw new IllegalArgumentException("LeftX cannot be greater or equal to rightX");
+        }
+        if (pointsCount < 2) {
+            throw new IllegalArgumentException("Points count must be greater than 1");
+        }
+
+        // Проверка, что отрезок табулирования принадлежит области определения
+        if (leftX < function.getLeftDomainBorder() || rightX > function.getRightDomainBorder()) {
+            throw new IllegalArgumentException("Tabulation interval is outside function domain");
+        }
+
+        // Создание табулированной функции
+        TabulatedFunction tabulatedFunc = createTabulatedFunction(fClass, leftX, rightX, pointsCount);
+
+        // Заполнение значений функции
+        for (int i = 0; i < pointsCount; i++) {
+            double x = tabulatedFunc.getPointX(i);
+            double y = function.getFunctionValue(x);
+            tabulatedFunc.setPointY(i, y);
+        }
+
+        return tabulatedFunc;
+    }
+
+    public static TabulatedFunction inputTabulatedFunction(Class<?> fClass, InputStream in) throws IOException, InappropriateFunctionPointException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        if (!TabulatedFunction.class.isAssignableFrom(fClass)) {
+            throw new IllegalArgumentException("Class must be realize TabulatedFunction interface!");
+        }
+        DataInputStream data = new DataInputStream(in);
+
+        FunctionPoint[] points;
+        try {
+            int pCount = data.readInt();
+            points = new FunctionPoint[pCount];
+            for (int i = 0; i < pCount; i++) {
+                points[i] = new FunctionPoint(data.readDouble(), data.readDouble());
+            }
+        } catch (IOException e) {
+            throw new IOException("Have a problem with your flow!", e);
+        }
+        java.lang.reflect.Constructor<?> constructor = fClass.getConstructor(FunctionPoint[].class);
+        return (TabulatedFunction) constructor.newInstance((Object) points);
+    }
+
+    public static TabulatedFunction readTabulatedFunction(Class<?> fClass, Reader in) throws IOException, InappropriateFunctionPointException {
+        StreamTokenizer tokenizer = new StreamTokenizer(in);
+
+        try {
+            if (!TabulatedFunction.class.isAssignableFrom(fClass)) {
+                throw new IllegalArgumentException("Class must be realize TabulatedFunction interface!");
+            }
+
+            if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) { // TT_NUMBER - токен являктся числом
+                throw new IOException("Expected points count number");
+            }
+            int pointsCount = (int) tokenizer.nval;
+
+            FunctionPoint[] points = new FunctionPoint[pointsCount];
+            for (int i = 0; i < pointsCount; i++) {
+                // Читаем x
+                if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) {
+                    throw new IOException("Expected x coordinate at point " + i);
+                }
+                double x = tokenizer.nval;
+
+                // Читаем y
+                if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) {
+                    throw new IOException("Expected y coordinate at point " + i);
+                }
+                double y = tokenizer.nval;
+
+                points[i] = new FunctionPoint(x, y);
+            }
+
+            java.lang.reflect.Constructor<?> constructor = fClass.getConstructor(FunctionPoint[].class);
+            return (TabulatedFunction) constructor.newInstance((Object) points);
+
+        } catch (IOException e) {
+            throw new IOException("Have a problem with your flow!", e);
+        } catch (IllegalArgumentException | NoSuchMethodException  | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
     /**
      * Приватный конструктор класса TabulatedFunctions
@@ -36,7 +221,7 @@ public class TabulatedFunctions {
         }
 
         // Создание табулированной функции
-        TabulatedFunction tabulatedFunc = new ArrayTabulatedFunction(leftX, rightX, pointsCount);
+        TabulatedFunction tabulatedFunc = TabulatedFunctions.tff.createTabulatedFunction(leftX, rightX, pointsCount);
 
         // Заполнение значений функции
         for (int i = 0; i < pointsCount; i++) {
@@ -177,8 +362,8 @@ public class TabulatedFunctions {
 
         } catch (IOException e) {
             throw new IOException("Have a problem with your flow!", e);
-        } catch (InappropriateFunctionPointException e) {
-            throw new RuntimeException(e);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(e);
         }
     }
 }

@@ -35,7 +35,7 @@ public class SimpleIntegrator implements Runnable {
                 }
             }
 
-            // ⭐️ ВАЖНО: Добавить задержку! ⭐️
+
             try {
                 Thread.sleep(1); // Даем время Generator'у
             } catch (InterruptedException e) {

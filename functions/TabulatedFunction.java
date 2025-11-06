@@ -3,7 +3,7 @@ package functions;
 
 import java.io.Externalizable;
 
-public interface TabulatedFunction extends Function, Cloneable, Externalizable {
+public interface TabulatedFunction extends Function, Cloneable, Externalizable, Iterable<FunctionPoint> {
 
     /**
      * Возвращает количество точек в табличной функции
