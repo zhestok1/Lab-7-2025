@@ -358,7 +358,7 @@ public class TabulatedFunctions {
                 points[i] = new FunctionPoint(x, y);
             }
 
-            return new ArrayTabulatedFunction(points);
+            return tff.createTabulatedFunction(points);
 
         } catch (IOException e) {
             throw new IOException("Have a problem with your flow!", e);
