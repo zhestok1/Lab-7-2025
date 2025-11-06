@@ -282,7 +282,7 @@ public class TabulatedFunctions {
             throw new IOException("Have a problem with your flow!", e);
         }
 
-        return new ArrayTabulatedFunction(points);
+        return tff.createTabulatedFunction(points);
 
     }
 
